@@ -1,0 +1,145 @@
+<canvas id="canvas" width="600px" height="480px" style="margin: 0 auto; display: block;"></canvas>
+<br>
+<canvas id="final" width="900px" height="360px" style="margin: 0 auto; display: block;"></canvas>
+
+<script type="text/javascript">
+
+function rgbToHex(rgb) {
+    rgb[0] %= 256;
+    rgb[1] %= 256;
+    rgb[2] %= 256;
+    var color = ((rgb[0] << 16) | (rgb[1] << 8) | rgb[2]).toString(16);
+    color = ("000000" + color).slice(-6);
+    return "#" + color;
+}
+
+function average(rgbs) {
+    rgb = [0, 0, 0, 0];
+    var n = rgbs.length/4;
+    for (var i=0 ; i < rgbs.length ; i++) {
+        rgb[i%4] += rgbs[i];
+    }
+    for (var i=0 ; i < rgb.length ; i++) {
+        rgb[i] /= n;
+    }
+    return rgb;
+}
+
+// helper functions
+CanvasRenderingContext2D.prototype.empty = function () {
+    this.clearRect(0, 0, this.canvas.clientWidth, this.canvas.clientWidth);
+};
+
+CanvasRenderingContext2D.prototype.line = function (color, width, x0, y0, x1, y1) {
+    this.strokeStyle = color;
+    this.lineWidth = width;
+    this.beginPath();
+    this.moveTo(x0, y0);
+    this.lineTo(x1, y1);
+    this.stroke();
+};
+
+// properties of things to draw
+var background = {
+    color: "#000092",
+};
+
+var grid = {
+    color: "#0f2ca2",
+    lineWidth: 8,
+    width: 60,
+    nx: 10,
+    ny: 8
+};
+
+var outline = {
+    color: "#000066",
+    lineWidth: grid.lineWidth
+};
+
+var logo = {
+    fontSize: 80,
+    font: "sans-serif",//"Century Gothic",
+    color: "#ffffff",
+    scale: {
+        x: 1,
+        y: 4
+    },
+    offset: {
+        x: 0,
+        y: -3.5
+    },
+    text: "TECHATHLON"
+};
+
+// get elements and do translate de-blur trick
+var canvas = document.getElementById("canvas");
+var context = canvas.getContext("2d");
+
+//// start drawing
+
+// background
+context.strokeStyle = background.color;
+context.fillStyle = background.color;
+context.fillRect(0, 0, canvas.width, canvas.height);
+
+
+// grid
+for (var x=0 ; x < grid.nx ; x++) context.line(grid.color, grid.lineWidth, grid.width*x, 0, grid.width*x, canvas.height);
+for (var y=0 ; y < grid.ny ; y++) context.line(grid.color, grid.lineWidth, 0, grid.width*y, canvas.width, grid.width*y);
+
+// outline
+context.strokeStyle = outline.color;
+context.lineWidth = outline.lineWidth;
+context.strokeRect(0, 0, canvas.width, canvas.height);
+
+// name
+context.font = logo.fontSize + "px " + logo.font;
+context.fillStyle = logo.color;
+var textSize = context.measureText(logo.text);
+var x = canvas.width/2/logo.scale.x;
+var y = canvas.height/2/logo.scale.y;
+x -= textSize.width/2 - logo.offset.x;// center
+y -= logo.fontSize/2 - logo.offset.y;
+context.scale(logo.scale.x, logo.scale.y);
+context.textBaseline = "top";
+context.fillText(logo.text, x, y);
+
+(function spin() {
+    var y;
+    for (var i=0 ; i < 4000000000 ; i++) {
+        y = i*i;
+    }
+})();
+
+function getColor(x, y) {
+    return rgbToHex(average(context.getImageData(x, y, 2, 2).data))
+}
+
+// build final
+var fcanvas = document.getElementById("final");
+var fc = fcanvas.getContext("2d");
+//fc.translate(0.5, 0.5);
+
+var f = {
+    scale: 100
+};
+
+var x, y, color;
+for (var fx=0 ; fx < fcanvas.width ; fx++) {
+    for (var fy=0 ; fy < fcanvas.height ; fy++) {
+        x = fx;
+        y = fy;
+        x = x * canvas.width / fcanvas.width;
+        y = y * canvas.height / fcanvas.height;
+        xscale = fx*2/fcanvas.width - 1;
+        yscale = fy*2/fcanvas.height - 1;
+        x -= f.scale * xscale * Math.cos(Math.asin(yscale));
+        fc.fillStyle = getColor(x, y);
+        fc.fillRect(fx, fy, fx+1, fy+1);
+    }
+}
+
+
+
+</script>
