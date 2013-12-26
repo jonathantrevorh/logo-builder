@@ -1,13 +1,18 @@
 <canvas id="canvas" width="6000px" height="4800px" style="margin: 0 auto; display: none;"></canvas>
 <br>
-<canvas id="final" width="900px" height="360px" style="margin: 0 auto; display: block;"></canvas>
+<canvas id="final" width="900px" height="440px" style="margin: 0 auto; display: block; border: 1px dotted grey"></canvas>
 
 <script type="text/javascript">
 
-// get elements and do translate de-blur trick
+var colors = {
+    oldGold: "#CFB53B"
+}
+
+// get element and drawing context
 var canvas = document.getElementById("canvas");
 var context = canvas.getContext("2d");
 
+// helper functions
 function rgbToHex(rgb) {
     rgb[0] %= 256;
     rgb[1] %= 256;
@@ -41,7 +46,10 @@ function sample(x, y) {
     return average(sample);
 }
 
-// helper functions
+function getColor(x, y) {
+    return rgbToHex(sample(x, y));
+}
+
 CanvasRenderingContext2D.prototype.empty = function () {
     this.clearRect(0, 0, this.canvas.clientWidth, this.canvas.clientWidth);
 };
@@ -69,14 +77,15 @@ var grid = {
 };
 
 var outline = {
-    color: "#000066",
+    colorInner: "#000066",
+    colorOuter: "#ffffff",
     lineWidth: grid.lineWidth
 };
 
 var logo = {
     fontSize: canvas.width/7.5,
     font: "sans-serif",//"Century Gothic",
-    color: "#CFB53B",
+    color: colors.oldGold,
     scale: {
         x: 1,
         y: 4
@@ -113,7 +122,7 @@ for (var x=0 ; x < grid.nx ; x++) context.line(grid.color, grid.lineWidth, grid.
 for (var y=0 ; y < grid.ny ; y++) context.line(grid.color, grid.lineWidth, 0, grid.width*y, canvas.width, grid.width*y);
 
 // outline
-context.strokeStyle = outline.color;
+context.strokeStyle = outline.colorInner;
 context.lineWidth = outline.lineWidth;
 context.strokeRect(0, 0, canvas.width, canvas.height);
 
@@ -136,36 +145,100 @@ var y = logo2.offset.y;
 context.textBaseline = "top";
 context.fillText(logo2.text, x, y);
 
-function getColor(x, y) {
-    return rgbToHex(sample(x, y));
-}
 
-// build final
+
+//// build final
+
 var fcanvas = document.getElementById("final");
 var fc = fcanvas.getContext("2d");
 //fc.translate(0.5, 0.5);
 
 var f = {
-    scale: canvas.width/6
+    scale: canvas.width/6,
+    height: 360,
+    width: 900,
+    offset: {
+        x: 0,
+        y: 40
+    }
 };
 
+var slogan = {
+    fontSize: 20,
+    font: logo.font,
+    color: colors.oldGold,
+    offset: {
+        x: NaN,
+        y: 15
+    },
+    dropShadow: {
+        color: "#ccc",
+        offset: {
+            x: 1,
+            y: 1
+        },
+        blur: 3
+    },
+    text: "THINK. CREATE. SOLVE."
+};
+
+var slogan2 = {
+    fontSize: slogan.fontSize,
+    font: slogan.font,
+    color: slogan.color,
+    offset: {
+        x: NaN,
+        y: f.height + f.offset.y + 5
+    },
+    dropShadow: slogan.dropShadow,
+    text: "COMPETE."
+};
+
+
+// copy raw and apply "globe" transformation
 var x, y, color;
-for (var fx=0 ; fx < fcanvas.width ; fx++) {
-    for (var fy=0 ; fy < fcanvas.height ; fy++) {
+for (var fx=0 ; fx < f.width ; fx++) {
+    for (var fy=0 ; fy < f.height ; fy++) {
         x = fx;
         y = fy;
-        x *= canvas.width / fcanvas.width;
-        y *= canvas.height / fcanvas.height;
-        xscale = fx*2/fcanvas.width - 1;
-        yscale = fy*2/fcanvas.height - 1;
+        x *= canvas.width / f.width;
+        y *= canvas.height / f.height;
+        xscale = fx*2/f.width - 1;
+        yscale = fy*2/f.height - 1;
         x += - f.scale * (xscale * Math.cos(Math.asin(yscale)) + 1);
         x *= 1.5;
         color = (x >= 0 && x <= canvas.width && y >= 0 && y <= canvas.width) ? getColor(x, y) : "#ffffff";
         fc.fillStyle = color;
-        fc.fillRect(fx, fy, fx+1, fy+1);
+        fc.fillRect(fx + f.offset.x, fy + f.offset.y, fx+1, fy+1);
     }
 }
 
+// fix issue with vertical bleeding of border
+fc.fillStyle = "#ffffff";
+fc.fillRect(0, f.height + f.offset.y, fcanvas.width, fcanvas.height);
+
+// draw slogan
+function drawText(context, text) {
+    context.font = text.fontSize + "px " + text.font;
+    context.fillStyle = text.color;
+    var textSize = context.measureText(text.text);
+    var x = text.offset.x;
+    if (isNaN(x)) {
+        x = (context.canvas.width - textSize.width) / 2;
+    }
+    var y = text.offset.y;
+    context.textBaseline = "top";
+    if (text.dropShadow) {
+        context.shadowColor = text.dropShadow.color;
+        context.shadowOffsetX = text.dropShadow.offset.x;
+        context.shadowOffsetY = text.dropShadow.offset.y;
+        context.shadowBlur = text.dropShadow.blur;
+        context.fillText(text.text, x, y);
+    }
+    context.fillText(text.text, x, y);
+}
+drawText(fc, slogan);
+drawText(fc, slogan2);
 
 
 </script>
