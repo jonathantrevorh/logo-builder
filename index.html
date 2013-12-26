@@ -1,8 +1,12 @@
-<canvas id="canvas" width="600px" height="480px" style="margin: 0 auto; display: block;"></canvas>
+<canvas id="canvas" width="6000px" height="4800px" style="margin: 0 auto; display: none;"></canvas>
 <br>
 <canvas id="final" width="900px" height="360px" style="margin: 0 auto; display: block;"></canvas>
 
 <script type="text/javascript">
+
+// get elements and do translate de-blur trick
+var canvas = document.getElementById("canvas");
+var context = canvas.getContext("2d");
 
 function rgbToHex(rgb) {
     rgb[0] %= 256;
@@ -15,14 +19,26 @@ function rgbToHex(rgb) {
 
 function average(rgbs) {
     rgb = [0, 0, 0, 0];
-    var n = rgbs.length/4;
-    for (var i=0 ; i < rgbs.length ; i++) {
-        rgb[i%4] += rgbs[i];
+    var samples = [1, 3, 4, 5, 7];
+    for (var n=0 ; n < samples.length ; n++) {
+        var i = samples[n];
+        rgb[0] += rgbs[4*i + 0];
+        rgb[1] += rgbs[4*i + 1];
+        rgb[2] += rgbs[4*i + 2];
+        rgb[3] += rgbs[4*i + 3];
     }
-    for (var i=0 ; i < rgb.length ; i++) {
-        rgb[i] /= n;
-    }
+    
+    // normalize
+    for (var i=0 ; i < rgb.length ; i++) rgb[i] /= samples.length;
+    
     return rgb;
+}
+
+function sample(x, y) {
+    var size = 3;
+    var offset = -1;
+    var sample = context.getImageData(x + offset, y + offset, size, size).data;
+    return average(sample);
 }
 
 // helper functions
@@ -46,8 +62,8 @@ var background = {
 
 var grid = {
     color: "#0f2ca2",
-    lineWidth: 8,
-    width: 60,
+    lineWidth: canvas.width/75,
+    width: canvas.width/10,
     nx: 10,
     ny: 8
 };
@@ -58,23 +74,31 @@ var outline = {
 };
 
 var logo = {
-    fontSize: 80,
+    fontSize: canvas.width/7.5,
     font: "sans-serif",//"Century Gothic",
-    color: "#ffffff",
+    color: "#CFB53B",
     scale: {
         x: 1,
         y: 4
     },
     offset: {
-        x: 0,
-        y: -3.5
+        x: 287.5,
+        y: 157.575460175
     },
-    text: "TECHATHLON"
+    text: "TECH"
 };
 
-// get elements and do translate de-blur trick
-var canvas = document.getElementById("canvas");
-var context = canvas.getContext("2d");
+var logo2 = {
+    fontSize: logo.fontSize,
+    font: logo.font,
+    color: "#ffffff",
+    scale: logo.scale,
+    offset: {
+        x: 2550,
+        y: logo.offset.y
+    },
+    text: "ATHLON"
+};
 
 //// start drawing
 
@@ -97,23 +121,23 @@ context.strokeRect(0, 0, canvas.width, canvas.height);
 context.font = logo.fontSize + "px " + logo.font;
 context.fillStyle = logo.color;
 var textSize = context.measureText(logo.text);
-var x = canvas.width/2/logo.scale.x;
-var y = canvas.height/2/logo.scale.y;
-x -= textSize.width/2 - logo.offset.x;// center
-y -= logo.fontSize/2 - logo.offset.y;
+var x = logo.offset.x;
+var y = logo.offset.y;
 context.scale(logo.scale.x, logo.scale.y);
 context.textBaseline = "top";
 context.fillText(logo.text, x, y);
-
-(function spin() {
-    var y;
-    for (var i=0 ; i < 4000000000 ; i++) {
-        y = i*i;
-    }
-})();
+// name
+context.font = logo2.fontSize + "px " + logo2.font;
+context.fillStyle = logo2.color;
+var textSize = context.measureText(logo2.text);
+var x = logo2.offset.x;
+var y = logo2.offset.y;
+//context.scale(logo2.scale.x, logo2.scale.y);
+context.textBaseline = "top";
+context.fillText(logo2.text, x, y);
 
 function getColor(x, y) {
-    return rgbToHex(average(context.getImageData(x, y, 2, 2).data))
+    return rgbToHex(sample(x, y));
 }
 
 // build final
@@ -122,7 +146,7 @@ var fc = fcanvas.getContext("2d");
 //fc.translate(0.5, 0.5);
 
 var f = {
-    scale: 100
+    scale: canvas.width/6
 };
 
 var x, y, color;
@@ -130,12 +154,14 @@ for (var fx=0 ; fx < fcanvas.width ; fx++) {
     for (var fy=0 ; fy < fcanvas.height ; fy++) {
         x = fx;
         y = fy;
-        x = x * canvas.width / fcanvas.width;
-        y = y * canvas.height / fcanvas.height;
+        x *= canvas.width / fcanvas.width;
+        y *= canvas.height / fcanvas.height;
         xscale = fx*2/fcanvas.width - 1;
         yscale = fy*2/fcanvas.height - 1;
-        x -= f.scale * xscale * Math.cos(Math.asin(yscale));
-        fc.fillStyle = getColor(x, y);
+        x += - f.scale * (xscale * Math.cos(Math.asin(yscale)) + 1);
+        x *= 1.5;
+        color = (x >= 0 && x <= canvas.width && y >= 0 && y <= canvas.width) ? getColor(x, y) : "#ffffff";
+        fc.fillStyle = color;
         fc.fillRect(fx, fy, fx+1, fy+1);
     }
 }
